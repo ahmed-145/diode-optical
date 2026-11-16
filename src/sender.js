@@ -1,11 +1,11 @@
 import {prepare} from './encode.js';
 import {formatBytes, MAX_FILE, PROFILES} from './common.js';
 const $ = id => document.getElementById(id);
-let selected, encoder, timer, sent = 0, busy = false, started = 0, burstFrames = 0;
+let selected, selectedBytes, encoder, timer, sent = 0, busy = false, started = 0, burstFrames = 0;
 function status(message, error = false) { $('status').textContent = message; $('status').dataset.error = String(error); }
 function pause() { const wasPlaying = !!timer; clearTimeout(timer); timer = null; $('play').textContent = 'Start stream'; if (wasPlaying) $('mode').textContent = encoder ? 'PAUSED' : 'STANDBY'; }
-function select(file) {
-  pause(); encoder = null; $('mode').textContent = 'STANDBY'; selected = file; sent = 0; $('frames').textContent = '0'; $('encoded').textContent = '—';
+function select(file, bytes = file === selected ? selectedBytes : null) {
+  pause(); encoder = null; $('mode').textContent = 'STANDBY'; selected = file; selectedBytes = bytes; sent = 0; $('frames').textContent = '0'; $('encoded').textContent = '—';
   $('play').disabled = $('fullscreen').disabled = true; $('qr').hidden = true; $('empty').hidden = false;
   const valid = file && file.size <= MAX_FILE;
   $('prepare').disabled = !valid || busy;
@@ -13,13 +13,30 @@ function select(file) {
   status(valid ? 'File selected. Prepare the transfer to continue.' : 'Choose a file of 5 MB or smaller.', !valid);
 }
 $('file').addEventListener('change', () => select($('file').files[0]));
-$('demo').onclick = () => { $('file').value = ''; select(new File(['Hello across the gap.\n\nThis file travelled through light, not a network.\n— Diode Optical\n'], 'hello-from-diode.txt', {type: 'text/plain'})); };
+$('demo').onclick = () => {
+  const text = 'Hello across the gap.\n\nThis file travelled through light, not a network.\n— Diode Optical\n';
+  $('file').value = ''; select(new File([text], 'hello-from-diode.txt', {type: 'text/plain'}), new TextEncoder().encode(text));
+};
+async function readLocalFile(file) {
+  // FileReader works on older Safari and avoids depending solely on Blob.arrayBuffer.
+  if (typeof FileReader !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result));
+      reader.onerror = () => reject(new Error(`Could not read the local file: ${reader.error?.message || 'read failed'}`));
+      reader.onabort = () => reject(new Error('Local file reading was cancelled'));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  return new Uint8Array(await file.arrayBuffer());
+}
 $('prepare').onclick = async () => {
   if (!selected || busy) return;
   pause(); $('mode').textContent = 'PREPARING'; busy = true; $('profile').disabled = $('passphrase').disabled = $('compress').disabled = true; $('prepare').disabled = true; $('file').disabled = $('demo').disabled = true;
   $('play').disabled = $('fullscreen').disabled = true; status('Preparing, compressing and checking the file…');
   try {
-    encoder = await prepare(new Uint8Array(await selected.arrayBuffer()), selected.name, {compress: $('compress').checked, passphrase: $('passphrase').value, block: PROFILES[$('profile').value || 'balanced'].block});
+    selectedBytes = selectedBytes || await readLocalFile(selected);
+    encoder = await prepare(selectedBytes, selected.name, {compress: $('compress').checked, passphrase: $('passphrase').value, block: PROFILES[$('profile').value || 'balanced'].block});
     sent = 0; $('frames').textContent = '0'; $('encoded').textContent = formatBytes(encoder.object.length);
     $('empty').hidden = true; $('qr').hidden = false; render(encoder.frame(0));
     $('play').disabled = $('fullscreen').disabled = false; $('mode').textContent = 'READY'; estimate();

@@ -60,11 +60,23 @@ try {
     const file=await promise;assert.deepEqual(await readFile(await file.path()),bytes);
     await receiver.locator('#reset').click();
   }
+  const compressedPayload=Buffer.from('A compressible optical transfer. '.repeat(500));
+  await sender.locator('#profile').selectOption('balanced');await sender.locator('#compress').check();
+  await sender.locator('#file').setInputFiles({name:'compressed.txt',mimeType:'text/plain',buffer:compressedPayload});
+  await sender.locator('#prepare').click();await waitPrepared(sender);
+  await receiver.locator('#image').setInputFiles({name:'compressed.png',mimeType:'image/png',buffer:await sender.locator('#qr').screenshot()});
+  await receiver.locator('#result').waitFor();
+  const compressedDownload=receiver.waitForEvent('download');await receiver.locator('#save').click();
+  assert.deepEqual(await readFile(await (await compressedDownload).path()),compressedPayload);
+  await receiver.locator('#reset').click();
   await receiver.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('Permission denied','NotAllowedError');};});
   await receiver.reload();await receiver.locator('#start').click();await receiver.locator('#status').filter({hasText:'Could not start camera'}).waitFor();assert.equal(await receiver.locator('#start').isEnabled(),true);
   // Network independence after the initial page load.
   await context.setOffline(true);await sender.locator('#demo').click();await sender.locator('#passphrase').fill('');await sender.locator('#prepare').click();await waitPrepared(sender);
   await sender.locator('#play').click();await sender.waitForTimeout(1200);await sender.locator('#play').click();assert(Number(await sender.locator('#frames').textContent())>0);
+  await sender.locator('#file').setInputFiles({name:'offline-file.txt',mimeType:'text/plain',buffer:Buffer.from('Fresh file selection without a network')});
+  await sender.locator('#prepare').click();await waitPrepared(sender);
+
   await mkdir('test-results',{recursive:true});
   for(const width of [390,1440]){
     await sender.setViewportSize({width,height:1000});

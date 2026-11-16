@@ -1,4 +1,4 @@
-import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, crc32, digest, hex, keyFor, maskFor, safeName, xor} from './common.js';
+import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, byteStream, crc32, digest, hex, keyFor, maskFor, safeName, xor} from './common.js';
 import {parseFrame, sourceCount, unb64, unpack} from './read.js';
 export class FountainDecoder {
   constructor() { this.reset(); }
@@ -52,7 +52,7 @@ export class FountainDecoder {
 }
 async function decompress(payload, limit) {
   assert(typeof DecompressionStream !== 'undefined', 'This browser cannot decompress gzip files');
-  const reader = new Blob([payload]).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+  const reader = byteStream(payload).pipeThrough(new DecompressionStream('gzip')).getReader();
   const parts = []; let size = 0;
   try {
     while (true) { const {value, done} = await reader.read(); if (done) break; size += value.length; assert(size <= limit, 'Decompressed file exceeds declared size'); parts.push(value); }

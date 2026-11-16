@@ -50,3 +50,7 @@ export async function keyFor(passphrase, salt, usages = ['encrypt']) {
   return crypto.subtle.deriveKey({name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256'}, key, { name: 'AES-GCM', length: 256 }, false, usages);
 }
 export function formatBytes(n) { return n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 ** 2).toFixed(1)} MB`; }
+
+export function byteStream(bytes) {
+  return new ReadableStream({start(controller) { controller.enqueue(bytes); controller.close(); }});
+}

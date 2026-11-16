@@ -1,10 +1,10 @@
-import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, b64, crc32, digest, hex, keyFor, maskFor, pack, safeName, validBlock, xor} from './common.js';
+import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, byteStream, b64, crc32, digest, hex, keyFor, maskFor, pack, safeName, validBlock, xor} from './common.js';
 export async function prepare(bytes, name, {passphrase = '', compress = true, block = BLOCK} = {}) {
   assert(bytes instanceof Uint8Array && bytes.length <= MAX_FILE, 'Choose a file of 5 MB or smaller');
   assert(crypto.subtle, 'Web Crypto requires HTTPS or localhost');
   let payload = bytes, compression = 'none';
   if (compress && typeof CompressionStream !== 'undefined' && bytes.length) {
-    const candidate = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+    const candidate = new Uint8Array(await new Response(byteStream(bytes).pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
     if (candidate.length + 16 < bytes.length) { payload = candidate; compression = 'gzip'; }
   }
   let object = pack({ v: 1, name: safeName(name), size: bytes.length, sha256: hex(await digest(bytes)), compression }, payload);
