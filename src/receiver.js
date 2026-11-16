@@ -105,7 +105,7 @@ $('start').onclick = async () => {
     }
     schedule();
     // Optional metadata must never delay scanning, including a promise that never resolves.
-    navigator.mediaDevices.enumerateDevices().then(devices => {
+    Promise.resolve().then(() => navigator.mediaDevices.enumerateDevices?.() || []).then(devices => {
       if (current !== token || !stream) return;
       const selected = stream.getVideoTracks()[0]?.getSettings().deviceId;
       const cameras = devices.filter(d => d.kind === 'videoinput');

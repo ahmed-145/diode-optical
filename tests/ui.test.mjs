@@ -18,17 +18,19 @@ async function app(mode) {
   const html=await readFile(`dist/${mode}.html`,'utf8'),nodes={},scheduled=[];
   for(const tag of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {nodes[tag[1]]=element();nodes[tag[1]].hidden=/\bhidden\b/.test(tag[0]);nodes[tag[1]].disabled=/\bdisabled\b/.test(tag[0]);}
   nodes.speed&&(nodes.speed.value='8');nodes.profile&&(nodes.profile.value='balanced');nodes.compress&&(nodes.compress.checked=true);
-  const document={getElementById:id=>nodes[id],createElement:()=>element(),addEventListener(){},hidden:false};
+  const document={getElementById:id=>nodes[id],createElement:()=>element(),listeners:{},addEventListener(type,fn){this.listeners[type]=fn;},hidden:false};
   const context=vm.createContext({console,crypto:webcrypto,Uint8Array,Uint32Array,Uint8ClampedArray,DataView,TextEncoder,TextDecoder,Blob,Response,CompressionStream,DecompressionStream,File,URL,btoa,atob,document,
     navigator:{},Option:class{},matchMedia:()=>({matches:false}),setTimeout(fn){scheduled.push(fn);return scheduled.length;},clearTimeout(){},createImageBitmap:async file=>({...file.bitmap,close(){}})});
   context.window=context;context.self=context;context.addEventListener=()=>{};
   for(const script of html.matchAll(/<script>([\s\S]*?)<\/script>/g))vm.runInContext(script[1],context);
-  return {nodes,scheduled,context};
+  return {nodes,scheduled,context,document};
 }
 test('standalone UI scripts: sample → encrypted QR pixels → import → unlock → verified save/reset',async()=>{
   const sender=await app('sender'),receiver=await app('receiver'),s=sender.nodes,r=receiver.nodes;
   assert(s.prepare.disabled);s.demo.onclick();assert(!s.prepare.disabled);s.passphrase.value='UI test long passphrase';await s.prepare.onclick();
-  assert.equal(s.mode.textContent,'READY');assert(!s.qr.hidden);s.play.onclick();
+  assert.equal(s.mode.textContent,'READY');assert(!s.qr.hidden);
+  sender.document.hidden=true;sender.document.listeners.visibilitychange();assert.equal(s.mode.textContent,'READY');
+  sender.document.hidden=false;s.play.onclick();
   for(let i=0;i<12 && r.unlock.hidden && r.result.hidden;i++){
     const qr=s.qr;r.image.files=[{size:qr.pixels.length,bitmap:{width:qr.width,height:qr.height,pixels:qr.pixels}}];
     await r.image.onchange();if(sender.scheduled.length)sender.scheduled.shift()();

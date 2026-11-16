@@ -8,6 +8,10 @@ if (!['chromium','firefox','webkit'].includes(engine)) throw new Error('Unsuppor
 const server = spawn(process.execPath, ['scripts/serve.mjs'], {stdio:['ignore','pipe','inherit']});
 await new Promise((resolve,reject) => {server.stdout.on('data',d=>{if(d.toString().includes('Diode:'))resolve();});server.on('exit',code=>reject(new Error(`Server exited ${code}`)));});
 let browser;
+async function waitPrepared(page) {
+  await page.waitForFunction(() => document.getElementById('status').dataset.error === 'true' || (!document.getElementById('qr').hidden && !document.getElementById('prepare').disabled));
+  assert.equal(await page.locator('#status').getAttribute('data-error'), 'false', await page.locator('#status').textContent());
+}
 try {
   browser = await engines[engine].launch({headless:true});
   const context = await browser.newContext({acceptDownloads:true}), errors=[], external=[];
@@ -22,7 +26,7 @@ try {
   await sender.locator('#passphrase').fill('browser test passphrase');
   await sender.locator('#compress').uncheck();
   await sender.locator('#prepare').click();
-  await sender.locator('#mode').filter({hasText:'READY'}).waitFor();
+  await waitPrepared(sender);
   await sender.locator('#speed').press('Home');
   await sender.locator('#speed').dispatchEvent('input');
   assert.equal(await sender.locator('#speed-label').textContent(),'1');
@@ -48,7 +52,7 @@ try {
     await sender.locator('#profile').selectOption(profile);
     await sender.locator('#file').setInputFiles({name:'profile.bin',mimeType:'application/octet-stream',buffer:bytes});
     await sender.locator('#passphrase').fill('');await sender.locator('#prepare').click();
-    await sender.locator('#mode').filter({hasText:'READY'}).waitFor();
+    await waitPrepared(sender);
     const image=await sender.locator('#qr').screenshot();
     await receiver.locator('#image').setInputFiles({name:profile+'.png',mimeType:'image/png',buffer:image});
     await receiver.locator('#result').waitFor();
@@ -59,7 +63,7 @@ try {
   await receiver.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('Permission denied','NotAllowedError');};});
   await receiver.reload();await receiver.locator('#start').click();await receiver.locator('#status').filter({hasText:'Could not start camera'}).waitFor();assert.equal(await receiver.locator('#start').isEnabled(),true);
   // Network independence after the initial page load.
-  await context.setOffline(true);await sender.locator('#demo').click();await sender.locator('#passphrase').fill('');await sender.locator('#prepare').click();await sender.locator('#mode').filter({hasText:'READY'}).waitFor();
+  await context.setOffline(true);await sender.locator('#demo').click();await sender.locator('#passphrase').fill('');await sender.locator('#prepare').click();await waitPrepared(sender);
   await sender.locator('#play').click();await sender.waitForTimeout(1200);await sender.locator('#play').click();assert(Number(await sender.locator('#frames').textContent())>0);
   await mkdir('test-results',{recursive:true});
   for(const width of [390,1440]){
@@ -69,8 +73,17 @@ try {
   }
   await receiver.screenshot({path:'test-results/receiver.png',fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('test-results/browser-result.json',JSON.stringify({passed:true,engine,browser:browser.version(),checks:['all three profiles through real QR screenshots','real QR screenshot import','AES-GCM wrong/right passphrase','verified file download byte comparison','reset','camera denial','offline playback','mobile/desktop overflow','no page errors or external requests']},null,2));
   await context.close();
   if (engine === 'chromium') await testCamera(browser);
+  await writeFile('test-results/browser-result.json',JSON.stringify({passed:true,engine,browser:browser.version(),syntheticCamera:engine==='chromium'?'passed':'not run',checks:['all three profiles through real QR screenshots','AES-GCM wrong/right passphrase','verified file download byte comparison','reset','camera denial','offline playback','mobile/desktop overflow','no page errors or external requests']},null,2));
   console.log('Browser checks passed: optical UI round trip, encryption, download, reset, camera denial, offline operation, responsive layout.');
+} catch (error) {
+  if (browser) {
+    await mkdir('test-results',{recursive:true});
+    for (const [i,page] of browser.contexts().flatMap(c=>c.pages()).entries()) {
+      console.error('Browser failure state',i,await page.locator('#status').textContent().catch(()=>''),await page.locator('#mode').textContent().catch(()=>''));
+      await page.screenshot({path:`test-results/failure-${i}.png`,fullPage:true}).catch(()=>{});
+    }
+  }
+  throw error;
 } finally {if(browser)await browser.close();server.kill();}
