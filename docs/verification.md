@@ -1,4 +1,15 @@
-# Verification evidence — 2026-11-16
+# Verification — v0.2 upgrade (2026-11-17)
+
+Local `npm run check` passes 15 tests. Added coverage includes periodic loss at several rates across all symbol sizes, all-profile real QR scans at three pixels/module, bounded/mixed profile headers, CRC known answers, and reset during a pending reconstruction of the same file. The maximum-file test now exercises all three symbol sizes. Sender build checks now also exclude receive-side framing/base64/object parsing helpers.
+
+`npm run benchmark` reports synthetic raster rendering/scanning CPU timings and profile payload ceilings; no optical throughput claim is made. The default channel increases from 256 bytes × 4 fps to 512 bytes × 8 fps. Dense offers 1024 × 12. Camera performance may erase those theoretical gains under poor capture conditions.
+
+The CI matrix now includes Chromium, Firefox and WebKit for all-profile UI transfer/download verification, encryption, camera denial, reset, offline playback, responsive overflow and error/network checks. Chromium additionally exercises actual HTMLVideoElement → canvas → jsQR scanning using a synthetic MediaStream and checks permission cancellation, device-enumeration failure, track end, cleanup and restart. The current run result must be checked before calling this new coverage passed.
+
+Actual physical camera/lighting/device testing and independent security review remain open. Desktop WebKit passing does not establish iOS Safari hardware compatibility.
+
+## Historical v0.1 evidence
+
 
 ## Passed locally
 

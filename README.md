@@ -2,7 +2,7 @@
 
 Transfer a file through animated QR codes. No Wi-Fi, Bluetooth, server, account, or runtime CDN.
 
-**Experimental v0.1:** sender and receiver are implemented and automated checks run locally. Real phone-camera/lighting validation and independent security review remain outstanding. This is not a certified hardware data diode.
+**Experimental v0.2:** sender and receiver are implemented and automated checks run locally. Three browser engines and synthetic camera lifecycle tests are configured in CI. Real phone-camera/lighting validation and independent security review remain outstanding. This is not a certified hardware data diode.
 
 ## Run
 
@@ -21,36 +21,47 @@ Open `http://127.0.0.1:4173/sender.html` to send, or `/receiver.html` to receive
 
 1. Choose a file (up to 5 MB), or try the sample.
 2. Optionally enter a passphrase of at least eight characters. Share it separately.
-3. Prepare the file, then start the QR stream. Use slower playback for difficult cameras.
+3. Prepare the file, then start the QR stream. Choose Robust, Balanced (default), or Dense. Use slower playback for difficult cameras.
 4. On each receiver, start its camera and point it at the whole QR code. QR screenshot import is also supported.
 5. Once collected, enter the passphrase if needed and save the verified file.
 
 Any number of receivers can join independently, including mid-stream. Frames may arrive out of order, repeat, or be lost. The stream produces new repair equations rather than requiring every original frame. Only a receiver can confirm completion. Keep displaying until all receivers finish.
 
-Use small files first. Payload capacity is 256 bytes/frame before recovery overhead: at the default 4 fps the ideal ceiling is approximately 1 KB/s. A 5 MB transfer can take well over 85 minutes. The size cap is a resource boundary, not a claim that large camera transfers are practical.
+Use small files first. Profiles offer these **nominal ceilings, not measured camera throughput**:
+
+| Profile | Bytes/frame | Default fps | Payload ceiling before losses |
+| --- | --- | --- | --- |
+| Robust | 256 | 4 | 1 KB/s |
+| Balanced | 512 | 8 | 4 KB/s |
+| Dense | 1024 | 12 | 12 KB/s |
+
+Dense requires a sharper image and may be slower in practice if the camera misses more frames. The sender displays a lower-bound transfer time and its actual playback rate; only the receiver reports recovery. The 5 MB cap is a resource boundary, not a promise of a practical large-file transfer time.
 
 ## Implemented
 
 - Separate camera-less sender and camera/image receiver HTML artifacts.
-- Independently written generation-based binary fountain coding, bounded to 32 source symbols per generation; not RFC 6330/RaptorQ and not compatible with other tools.
+- Independently written generation-based binary fountain coding, bounded to 32 source symbols per generation with pseudorandom round offsets to resist periodic capture loss; not RFC 6330/RaptorQ and not compatible with other tools.
 - Per-frame and whole-object CRC-32, a truncated object SHA-256 session identity, and full original-file SHA-256 verification.
 - Optional gzip when it saves bytes; optional AES-256-GCM with PBKDF2-SHA256, 250,000 iterations, fresh salt and nonce.
-- Pause/speed/fullscreen controls, reset, camera selection/cleanup, useful-symbol progress, explicit verified download, responsive layout, keyboard controls, and live status.
+- Drag/drop, profile/speed/fullscreen controls, estimates, reset, frame-synchronized camera scanning, signal diagnostics, camera selection/cleanup, useful-symbol progress, explicit verified download, responsive layout, keyboard controls, and live status.
 - Strict no-connect CSP, sender dependency audit, deterministic builds and SHA-256 manifests.
 
 Brotli, dual lanes, paper export, and bidirectional transfer are not implemented. The original PRD's patent/licensing review remains unresolved; the experimental codec is not a legal design-around claim.
 
 ## Validation
 
-`npm run check` runs ten protocol/QR/UI tests, builds both artifacts, and audits sender separation and script syntax. The UI integration test uses a DOM/canvas harness; it is not a substitute for a browser or physical camera.
+`npm run check` runs 15 protocol/QR/UI tests, builds both artifacts, and audits sender separation and script syntax. The UI integration test uses a DOM/canvas harness; it is not a substitute for a browser or physical camera.
 
-Browser checks, including a real screenshot-to-receiver download, are provided separately:
+Browser checks, including all-profile screenshot-to-download tests, run on Chromium, Firefox and WebKit in CI. Chromium additionally tests the actual video scanning loop with a synthetic camera, completion cleanup, missing device labels, cancellation during permission requests, disconnection, and restart. These are not physical phone-camera tests. To run locally:
 
 ```sh
 npm install --no-save --package-lock=false playwright@1.58.0
 npx playwright install chromium
 npm run test:browser
+# Optional: BROWSER_ENGINE=firefox npm run test:browser
 ```
+
+`npm run benchmark` records real QR-render/scan CPU timings and nominal profile rates in test-results/benchmark.json. It does not measure optical throughput.
 
 See [verification evidence](docs/verification.md) for results and limits. GitHub Actions runs both layers and retains HTML builds and screenshots.
 

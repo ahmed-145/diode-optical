@@ -1,6 +1,6 @@
 # Security model
 
-Experimental v0.1; not independently audited or certified. Do not treat this as a physical data diode.
+Experimental v0.2; not independently audited or certified. Do not treat this as a physical data diode.
 
 The sender build contains no camera or receiver code. It cannot constrain the OS, extensions, other apps, peripherals, radios, microphones, or a compromised browser. CSP denies network connections, and hosted sender headers disable camera/microphone; those controls still depend on the browser and deployment.
 

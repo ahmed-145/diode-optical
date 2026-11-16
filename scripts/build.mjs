@@ -8,9 +8,9 @@ await rm(new URL('dist/', root), {recursive: true, force: true}); await mkdir(ne
 const style = await read('src/style.css'), common = strip(await read('src/common.js'));
 const inventory = {};
 for (const mode of ['sender', 'receiver']) {
-  const files = mode === 'sender' ? ['src/common.js','src/encode.js','src/sender.js','vendor/qrcode.cjs'] : ['src/common.js','src/decode.js','src/receiver.js','vendor/jsqr.cjs'];
-  const app = [common, strip(await read(mode === 'sender' ? 'src/encode.js' : 'src/decode.js')), strip(await read(`src/${mode}.js`))].join('\n');
-  const lib = await read(files[3]);
+  const files = mode === 'sender' ? ['src/common.js','src/encode.js','src/sender.js','vendor/qrcode.cjs'] : ['src/common.js','src/read.js','src/decode.js','src/receiver.js','vendor/jsqr.cjs'];
+  const app = [common, mode === 'receiver' ? strip(await read('src/read.js')) : '', strip(await read(mode === 'sender' ? 'src/encode.js' : 'src/decode.js')), strip(await read(`src/${mode}.js`))].join('\n');
+  const lib = await read(files.at(-1));
   const scripts = [lib, `(() => {\n'use strict';\n${app}\n})();`].map(s => s.replace(/<\/script/gi, '<\\/script'));
   const csp = `default-src 'none'; script-src ${scripts.map(s => `'sha256-${hash(s)}'`).join(' ')}; style-src 'unsafe-inline'; img-src data: blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'`;
   let html = await read(`src/${mode}.html`);

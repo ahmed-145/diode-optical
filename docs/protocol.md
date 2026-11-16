@@ -1,6 +1,6 @@
-# Diode v1 wire protocol
+# Diode wire protocol — v1 and v2
 
-Status: experimental, implementation-specific; no RFC 6330 interoperability. All integers are unsigned big-endian. A QR contains ASCII `DIO1:` followed by standard base64 for exactly 294 bytes (397 characters overall). No payload depends on a one-time descriptor beacon.
+Status: experimental v0.2, implementation-specific; no RFC 6330 interoperability. All integers are unsigned big-endian. Legacy Robust QR frames contain ASCII `DIO1:` followed by standard base64 for 294 bytes (397 characters overall). Balanced and Dense use `DIO2:` with the same header layout and a variable symbol size. Receivers accept both versions; old v0.1 receivers need Robust mode. No payload depends on a one-time descriptor beacon.
 
 | Offset | Length | Field |
 | --- | --- | --- |
@@ -15,11 +15,15 @@ Status: experimental, implementation-specific; no RFC 6330 interoperability. All
 
 CRC is standard reflected IEEE polynomial 0xedb88320, initial/final XOR 0xffffffff. Base64 is transport encoding, not encryption.
 
+## Version 2 variable symbol sizes
+
+`DIO2:` frames encode B + 38 bytes where B is 512 or 1024 (the parser also accepts B=256). The first 26 bytes are unchanged. Offset 26 stores B as a 4-byte integer. Payload occupies bytes 30 through 30+B-1; object CRC is at 30+B and frame CRC at 34+B. The frame CRC covers bytes 0 through 33+B. Reject unsupported B, mismatched actual length, excessive total length, and invalid generation indexes before storing equations. Symbol size is part of session consistency; changing a profile requires a receiver reset. Metadata envelopes and encryption are unchanged, including AES-GCM additional authenticated data `DIO1`.
+
 ## Fountain equations
 
-Split the object into 256-byte zero-padded symbols. Each generation has up to 32 source symbols. Seeds below that generation's source count select the corresponding source symbol. Other seeds generate a nonzero 32-bit coefficient mask with `maskFor` in src/common.js, limited to the actual source count. The encoded payload is XOR of the selected symbols.
+Split the object into B-byte zero-padded symbols (B=256 for legacy v1). Each generation has up to 32 source symbols. Seeds below that generation's source count select the corresponding source symbol. Other seeds generate a nonzero 32-bit coefficient mask with `maskFor` in src/common.js, limited to the actual source count. The encoded payload is XOR of the selected symbols.
 
-For frame sequence index i and generation count G, seed = floor(i/G); generation = (i mod G + seed mod G) mod G. Rotation prevents fixed periodic capture loss from permanently omitting the same generation. Seeds advance until the 32-bit range is exhausted. The receiver inserts equations by lowest-set-bit pivot, discards dependent duplicates, and back-substitutes once a generation reaches full rank. Different session identities, lengths, or object CRC values are never mixed. Rank, not raw frame count, drives progress.
+For frame sequence index i and generation count G, seed = floor(i/G); offset = maskFor(seed + 32, 32) mod G; generation = (i mod G + offset) mod G. Pseudorandom offsets resist phase locking under periodic capture loss; a simple linear rotation was found insufficient in regression tests. No deterministic schedule can guarantee recovery against every adversarial loss pattern. Seeds advance until the 32-bit range is exhausted. The receiver inserts equations by lowest-set-bit pivot, discards dependent duplicates, and back-substitutes once a generation reaches full rank. Different session identities, lengths, or object CRC values are never mixed. Rank, not raw frame count, drives progress.
 
 This finite-seed fountain construction needs enough independent equations in every generation; no particular loss pattern or capture duration guarantees completion. The maximum file is 5 MiB. Memory grows linearly with object size, and equation work is bounded by the 32-symbol generation width.
 

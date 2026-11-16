@@ -4,7 +4,8 @@ import {webcrypto} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {prepare} from '../src/encode.js';
 import {FountainDecoder, openObject} from '../src/decode.js';
-import {MAX_FILE, MAX_OBJECT, b64, crc32, digest, hex, pack, parseFrame, unb64} from '../src/common.js';
+import {MAX_FILE, MAX_OBJECT, b64, crc32, digest, hex, pack} from '../src/common.js';
+import {parseFrame, unb64} from '../src/read.js';
 if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const require = createRequire(import.meta.url), qrcode = require('../vendor/qrcode.cjs'), jsQR = require('../vendor/jsqr.cjs');
 function random(n) { const bytes = new Uint8Array(n); for (let offset = 0; offset < n; offset += 65536) crypto.getRandomValues(bytes.subarray(offset, offset + 65536)); return bytes; }
@@ -88,5 +89,50 @@ test('real QR renderer → pixels → real jsQR scanner → file recovery', asyn
   assert.deepEqual((await openObject(await receiver.recover())).bytes,bytes);
 });
 test('5 MB binary transfer meets declared size limit', async () => {
-  const bytes=random(MAX_FILE),out=await roundtrip(bytes,'maximum.bin',{compress:false});assert.deepEqual(out.bytes,bytes);
+  const bytes=random(MAX_FILE);
+  for (const block of [256,512,1024]) { const out=await roundtrip(bytes,'maximum.bin',{compress:false,block});assert.deepEqual(out.bytes,bytes); }
+});
+
+test('all payload profiles recover after late join with periodic frame loss', async () => {
+  const bytes = random(64000);
+  for (const block of [256,512,1024]) for (const keepEvery of [1,2,4]) {
+    const sender=await prepare(bytes,'profiles.bin',{block,compress:false}), receiver=new FountainDecoder();
+    let i=sender.generations*50;
+    for(let count=0;count<sender.blocks*keepEvery*12&&receiver.progress<1;count++,i++) {
+      // Fixed periodic capture loss must not starve specific generations.
+      if (i % keepEvery === 0) receiver.accept(sender.frame(i));
+    }
+    assert.equal(receiver.progress,1,`block ${block}, loss ${1-1/keepEvery}`);
+    assert.deepEqual((await openObject(await receiver.recover())).bytes,bytes);
+    assert.equal(receiver.groups.size,0);
+  }
+});
+test('every profile passes real QR scanning at three pixels/module', async () => {
+  for (const block of [256,512,1024]) {
+    const sender=await prepare(random(1200),'profile.bin',{block,compress:false});
+    const text=sender.frame(0),{data,size}=raster(text,3),result=jsQR(data,size,size,{inversionAttempts:'dontInvert'});
+    assert(result,`profile ${block}`);assert.equal(result.data,text);assert.equal(parseFrame(text).block,block);
+  }
+});
+test('profile headers are bounded and symbol sizes cannot be mixed in one session', async () => {
+  const bytes=random(2000),a=await prepare(bytes,'same',{block:512,compress:false}),b=await prepare(bytes,'same',{block:1024,compress:false});
+  const decoder=new FountainDecoder();decoder.accept(a.frame(0));assert.throws(()=>decoder.accept(b.frame(0)),/Different transfer/);
+  const invalid=unb64(a.frame(0).slice(5));new DataView(invalid.buffer).setUint32(26,16384);
+  assert.throws(()=>parseFrame('DIO2:'+b64(invalid)),/symbol size/);
+  await assert.rejects(prepare(bytes,'bad',{block:8192}),/Unsupported symbol/);
+  assert.throws(()=>parseFrame('DIO2:'+'A'.repeat(100000)),/Not a Diode/);
+});
+test('CRC32 matches the standard known-answer vector', () => {
+  assert.equal(crc32(new TextEncoder().encode('123456789')),0xcbf43926);
+});
+
+
+test('reset cancels in-flight reconstruction even when the next session has the same identity', async () => {
+  const sender=await prepare(random(1800),'reset.bin',{compress:false}),receiver=new FountainDecoder();
+  for(let i=0;i<sender.blocks;i++)receiver.accept(sender.frame(i));
+  const stale=receiver.recover();receiver.reset();
+  for(let i=0;i<sender.blocks;i++)receiver.accept(sender.frame(i));
+  await assert.rejects(stale,/reset during recovery/);
+  assert.equal(receiver.done,false);assert(receiver.groups.size>0);
+  assert.deepEqual(await receiver.recover(),sender.object);
 });

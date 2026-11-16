@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
+import {testCamera} from './camera.mjs';
 import {spawn} from 'node:child_process';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
-const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const engine = process.env.BROWSER_ENGINE || 'chromium';
+const engines = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+if (!['chromium','firefox','webkit'].includes(engine)) throw new Error('Unsupported browser engine');
 const server = spawn(process.execPath, ['scripts/serve.mjs'], {stdio:['ignore','pipe','inherit']});
 await new Promise((resolve,reject) => {server.stdout.on('data',d=>{if(d.toString().includes('Diode:'))resolve();});server.on('exit',code=>reject(new Error(`Server exited ${code}`)));});
 let browser;
 try {
-  browser = await chromium.launch({headless:true});
+  browser = await engines[engine].launch({headless:true});
   const context = await browser.newContext({acceptDownloads:true}), errors=[], external=[];
   context.on('page',page=>page.on('pageerror',error=>errors.push(error.message)));
   context.on('request',req=>{if(!req.url().startsWith('http://127.0.0.1:4173/')&&!req.url().startsWith('blob:'))external.push(req.url());});
@@ -40,6 +43,19 @@ try {
   const downloadPromise=receiver.waitForEvent('download');await receiver.locator('#save').click();
   const download=await downloadPromise;assert.deepEqual(await readFile(await download.path()),payload);
   await receiver.locator('#reset').click();assert.equal(await receiver.locator('#recovered').textContent(),'0%');assert.equal(await receiver.locator('#result').isHidden(),true);
+  for (const profile of ['robust','dense']) {
+    const bytes=Buffer.from('Profile check: '+profile);
+    await sender.locator('#profile').selectOption(profile);
+    await sender.locator('#file').setInputFiles({name:'profile.bin',mimeType:'application/octet-stream',buffer:bytes});
+    await sender.locator('#passphrase').fill('');await sender.locator('#prepare').click();
+    await sender.locator('#mode').filter({hasText:'READY'}).waitFor();
+    const image=await sender.locator('#qr').screenshot();
+    await receiver.locator('#image').setInputFiles({name:profile+'.png',mimeType:'image/png',buffer:image});
+    await receiver.locator('#result').waitFor();
+    const promise=receiver.waitForEvent('download');await receiver.locator('#save').click();
+    const file=await promise;assert.deepEqual(await readFile(await file.path()),bytes);
+    await receiver.locator('#reset').click();
+  }
   await receiver.addInitScript(()=>{navigator.mediaDevices.getUserMedia=async()=>{throw new DOMException('Permission denied','NotAllowedError');};});
   await receiver.reload();await receiver.locator('#start').click();await receiver.locator('#status').filter({hasText:'Could not start camera'}).waitFor();assert.equal(await receiver.locator('#start').isEnabled(),true);
   // Network independence after the initial page load.
@@ -53,6 +69,8 @@ try {
   }
   await receiver.screenshot({path:'test-results/receiver.png',fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  await writeFile('test-results/browser-result.json',JSON.stringify({passed:true,browser:browser.version(),checks:['real QR screenshot import','AES-GCM wrong/right passphrase','verified file download byte comparison','reset','camera denial','offline playback','mobile/desktop overflow','no page errors or external requests']},null,2));
+  await writeFile('test-results/browser-result.json',JSON.stringify({passed:true,engine,browser:browser.version(),checks:['all three profiles through real QR screenshots','real QR screenshot import','AES-GCM wrong/right passphrase','verified file download byte comparison','reset','camera denial','offline playback','mobile/desktop overflow','no page errors or external requests']},null,2));
+  await context.close();
+  if (engine === 'chromium') await testCamera(browser);
   console.log('Browser checks passed: optical UI round trip, encryption, download, reset, camera denial, offline operation, responsive layout.');
 } finally {if(browser)await browser.close();server.kill();}

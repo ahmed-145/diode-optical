@@ -17,9 +17,9 @@ function element() {
 async function app(mode) {
   const html=await readFile(`dist/${mode}.html`,'utf8'),nodes={},scheduled=[];
   for(const tag of html.matchAll(/<[^>]+\bid="([^"]+)"[^>]*>/g)) {nodes[tag[1]]=element();nodes[tag[1]].hidden=/\bhidden\b/.test(tag[0]);nodes[tag[1]].disabled=/\bdisabled\b/.test(tag[0]);}
-  nodes.speed&&(nodes.speed.value='4');nodes.compress&&(nodes.compress.checked=true);
+  nodes.speed&&(nodes.speed.value='8');nodes.profile&&(nodes.profile.value='balanced');nodes.compress&&(nodes.compress.checked=true);
   const document={getElementById:id=>nodes[id],createElement:()=>element(),addEventListener(){},hidden:false};
-  const context=vm.createContext({console,crypto:webcrypto,Uint8Array,Uint8ClampedArray,DataView,TextEncoder,TextDecoder,Blob,Response,CompressionStream,DecompressionStream,File,URL,btoa,atob,document,
+  const context=vm.createContext({console,crypto:webcrypto,Uint8Array,Uint32Array,Uint8ClampedArray,DataView,TextEncoder,TextDecoder,Blob,Response,CompressionStream,DecompressionStream,File,URL,btoa,atob,document,
     navigator:{},Option:class{},matchMedia:()=>({matches:false}),setTimeout(fn){scheduled.push(fn);return scheduled.length;},clearTimeout(){},createImageBitmap:async file=>({...file.bitmap,close(){}})});
   context.window=context;context.self=context;context.addEventListener=()=>{};
   for(const script of html.matchAll(/<script>([\s\S]*?)<\/script>/g))vm.runInContext(script[1],context);

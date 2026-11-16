@@ -1,13 +1,14 @@
-import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, crc32, digest, hex, keyFor, maskFor, parseFrame, safeName, sourceCount, unb64, unpack, xor} from './common.js';
+import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, crc32, digest, hex, keyFor, maskFor, safeName, xor} from './common.js';
+import {parseFrame, sourceCount, unb64, unpack} from './read.js';
 export class FountainDecoder {
   constructor() { this.reset(); }
-  reset() { this.session = null; this.total = 0; this.rank = 0; this.groups = new Map(); this.result = null; this.done = false; }
+  reset() { this.revision = (this.revision || 0) + 1; this.session = null; this.block = BLOCK; this.total = 0; this.rank = 0; this.groups = new Map(); this.result = null; this.done = false; }
   accept(text) {
     const frame = parseFrame(text);
-    if (this.session) assert(frame.session === this.session && frame.total === this.total && frame.objectCrc === this.objectCrc, 'Different transfer detected. Reset to receive it.');
-    else { this.session = frame.session; this.total = frame.total; this.objectCrc = frame.objectCrc; }
+    if (this.session) assert(frame.session === this.session && frame.total === this.total && frame.objectCrc === this.objectCrc && frame.block === this.block, 'Different transfer detected. Reset to receive it.');
+    else { this.session = frame.session; this.total = frame.total; this.objectCrc = frame.objectCrc; this.block = frame.block; }
     if (this.done) return false;
-    const count = sourceCount(this.total, frame.generation);
+    const count = sourceCount(this.total, frame.generation, this.block);
     let group = this.groups.get(frame.generation);
     if (!group) { group = { rows: [], rank: 0 }; this.groups.set(frame.generation, group); }
     if (group.rank === count) return false;
@@ -32,17 +33,20 @@ export class FountainDecoder {
       row.mask = (1 << pivot) >>> 0;
     }
   }
-  get progress() { return this.total ? this.rank / Math.ceil(this.total / BLOCK) : 0; }
+  get progress() { return this.total ? this.rank / Math.ceil(this.total / this.block) : 0; }
   async recover() {
     assert(this.total && this.progress === 1, 'Need more independent frames');
     if (this.result) return this.result;
+    const revision = this.revision, session = this.session;
     const object = new Uint8Array(this.total);
     for (const [generation, group] of this.groups) for (let i = 0; i < group.rows.length; i++) {
-      const start = (generation * WIDTH + i) * BLOCK;
-      object.set(group.rows[i].data.subarray(0, Math.min(BLOCK, this.total - start)), start);
+      const start = (generation * WIDTH + i) * this.block;
+      object.set(group.rows[i].data.subarray(0, Math.min(this.block, this.total - start)), start);
     }
     assert(crc32(object) === this.objectCrc, 'Object checksum mismatch');
-    assert(hex((await digest(object)).slice(0, 16)) === this.session, 'Object digest mismatch');
+    const hash = hex((await digest(object)).slice(0, 16));
+    assert(revision === this.revision, 'Transfer reset during recovery');
+    assert(hash === session, 'Object digest mismatch');
     this.done = true; this.result = object; this.groups.clear(); return object;
   }
 }
@@ -62,7 +66,7 @@ export async function openObject(object, passphrase = '') {
     assert(typeof meta.salt === 'string' && meta.salt.length === 24 && typeof meta.iv === 'string' && meta.iv.length === 16, 'Invalid encryption metadata');
     const salt = unb64(meta.salt), iv = unb64(meta.iv);
     assert(salt.length === 16 && iv.length === 12 && payload.length <= MAX_OBJECT, 'Invalid encryption envelope');
-    const key = await keyFor(passphrase, salt);
+    const key = await keyFor(passphrase, salt, ['decrypt']);
     let plain;
     try { plain = new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv, additionalData: new TextEncoder().encode('DIO1')}, key, payload)); }
     catch { throw new Error('Wrong passphrase or damaged encrypted file'); }
