@@ -1,32 +1,19 @@
-# Delivery milestones
+# Delivery status — experimental v0.1
 
-All work below is open; these are acceptance criteria, not completed features.
+| Item | Status |
+| --- | --- |
+| Independent framing and bounded fountain codec | Implemented; automated tests pass |
+| Late join, loss/reordering/duplicates, broadcast | Simulated tests pass |
+| Frame/object/file integrity gates | Implemented; corruption/size tests pass |
+| Separate sender-only artifact | Implemented; build audit passes |
+| Sender and camera/image receiver UI | Implemented; simulated DOM/canvas integration passes |
+| Gzip and passphrase encryption | Implemented; round-trip/wrong-passphrase/tamper tests pass |
+| Standalone HTML and reproducible build | Implemented; deterministic hashes checked locally |
+| Full Chromium UI test | Included in GitHub CI; sandbox cannot run a local server/browser |
+| Actual two-device camera transfer | Not performed |
+| iOS/Android/low-end device and lighting matrix | Not performed |
+| Independent security/cryptographic review | Not performed |
+| Freedom-to-operate and naming clearance | Unresolved |
+| Brotli, dual lanes, paper export, bidirectional | Not implemented; deferred |
 
-## 0 — Prerequisites
-
-- Record freedom-to-operate and deployment-device licensing decisions, with jurisdictional scope.
-- Select project license and record dependency licenses/provenance.
-- Finalize protocol byte layout, resource limits, compatibility policy, and threat model.
-- Evaluate QR and fountain libraries without copying unlicensed competitor code.
-
-Exit: recorded decisions and reproducible dependency evaluation.
-
-## 1 — Transfer core
-
-Implement framing, object validation, compression selection, and fountain adapter. Test deterministic fixtures, empty files, Unicode names, arbitrary bytes, duplicates, reordering, loss, late joins, mixed sessions, corruption, and bounds. Include actual QR renderer-to-scanner round trips. Reject invalid lengths, excessive allocations/decompression, unsupported versions, and checksum mismatch.
-
-Exit: byte-identical round trips and bounded failures for hostile input.
-
-## 2 — Sender and receiver
-
-Build file selection, QR playback/pause and density controls, camera selection/cleanup, reception status, and verified download. Produce and audit a separate sender artifact. Sender shows playback statistics only; receiver shows unique valid symbols and reconstruction state.
-
-Exit: actual two-device transfer and one-sender/two-receiver broadcast without feedback or pairing.
-
-## 3 — Offline release
-
-Pin toolchain and dependencies; publish hashes and a reproducible build recipe. Verify runtime network silence, sender isolation, keyboard controls, status announcements, and interrupted transfers.
-
-Test ~10 KB, ~500 KB, and ~5 MB files on iOS Safari, Android Chrome, and a lower-end device under bright/dim lighting. Record exact device/browser versions, successes/attempts, completion time, memory, scan rate, and failures. Verify offline camera behavior using actual distribution artifacts.
-
-Exit: measured support matrix and documented limits. Synthetic tests alone do not establish hardware reliability or production readiness.
+This implementation is a private experimental prototype built at the owner's explicit direction. It does not close the original PRD's unresolved legal review or satisfy a production release gate. See [verification evidence](verification.md).

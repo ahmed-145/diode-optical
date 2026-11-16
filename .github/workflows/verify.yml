@@ -1,0 +1,33 @@
+name: Verify Diode
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run check
+      - name: Verify reproducible build
+        run: |
+          cp dist/SHA256SUMS /tmp/first-build-sums
+          npm run build
+          cmp dist/SHA256SUMS /tmp/first-build-sums
+      - name: Install browser test harness
+        run: npm install --no-save --package-lock=false playwright@1.58.0
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diode-offline-and-test-results
+          path: |
+            dist/
+            test-results/

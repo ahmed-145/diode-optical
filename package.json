@@ -1,0 +1,17 @@
+{
+  "name": "diode-optical",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline one-way file transfer over animated QR",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/build.mjs && node tests/run.mjs",
+    "check": "npm test && npm run build && node scripts/audit.mjs",
+    "test:browser": "node tests/browser.mjs"
+  }
+}

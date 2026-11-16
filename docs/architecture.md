@@ -1,36 +1,20 @@
-# Proposed architecture
+# Implemented architecture — experimental v0.1
 
-Design only; all components below are unimplemented.
+The implementation uses browser-native JavaScript modules as source and a small dependency-free Node build script. The earlier TypeScript/WASM/RaptorQ proposal was replaced with inspectable JavaScript and an independent bounded binary fountain codec. This is not RFC 6330 compatibility or patent clearance.
 
-Use TypeScript with a static bundler and pinned dependencies. Produce sender and receiver from separate entry points. No shared router may pull receiver modules into the sender. Evaluate whether the selected fountain package can separate encoder and decoder, including WASM exports.
-
-| Component | Responsibility |
+| Component | Implementation |
 | --- | --- |
-| Protocol core | Versioned envelopes, bounds, checksums, safe metadata parsing |
-| Sender | File selection, compression, fountain encoding, QR display, pause/speed |
-| Receiver | Explicit camera controls, scanning, bounded recovery, verification, save |
-| Build audit | Import graph, emitted JS/WASM inventory, network behavior, artifact hashes |
+| Shared framing and envelope | src/common.js: limits, CRC-32, SHA-256, metadata, coefficient masks, KDF |
+| Sender only | src/encode.js + src/sender.js + MIT QR generator |
+| Receiver only | src/decode.js + src/receiver.js + Apache-2.0 jsQR |
+| Build | scripts/build.mjs: separate standalone HTML, script-hash CSP, source inventory, hashes |
+| Audit | scripts/audit.mjs: sender allowlist, prohibited APIs, offline references, compiled script syntax |
+| Verification | tests/: protocol, real QR raster/scanner, simulated UI, optional Chromium workflow |
 
-No backend or database. Vendor all runtime assets. Stop camera tracks and workers on stop/navigation/completion; revoke object URLs when no longer needed.
+The sender never imports recovery, scanner, decompression, or camera code. Both builds inline their assets, and CSP denies network connections. Hosted sender headers additionally disable camera and microphone. This boundary belongs to the app, not the host OS. No database, backend, account, telemetry, local storage, or automatic received-file execution is present.
 
-## Data flow
+Metadata travels inside the recoverable object. The receiver maintains a single session with a maximum object size of 5 MiB + 128 KiB and 32 equations per generation. It releases solved-group buffers after reconstruction. Decompression and original file lengths are bounded; a SHA-256 match gates saving. AES-GCM is optional. See the exact [wire protocol](protocol.md).
 
-Sender: file → metadata and original SHA-256 → optional compression → recoverable object → fountain symbols → bounded frames with CRC → monochrome QR.
+Camera access is explicit, tracks are stopped on stop, completion, reset, hidden tab, or page exit, and asynchronous operations use a cancellation token. Download URLs are revoked on replacement/reset. Mobile camera behavior and runtime browser enforcement require separate physical/browser verification.
 
-Receiver: camera → scanner → frame validation → session selection → deduplication/recovery → object validation → bounded decompression → original length/digest verification → explicit download.
-
-Specify byte layout before coding: magic/version, session ID, codec ID, object and symbol lengths, encoding symbol ID, and checksum coverage. Protect metadata inside the recoverable object so late joins need no one-time beacon. Specify original/encoded lengths and enforce limits before allocation. Set explicit maximum file size, symbol count, sessions, memory, decoding work, and decompressed bytes; finalize defaults from device measurements.
-
-Never mix sessions. Confirm before replacing an active session. Sanitize filenames, treat received content as opaque bytes, and never execute or preview received HTML.
-
-## Sender boundary
-
-Exclude camera, scanner, recovery decoder, and receiver UI, including transitive code and WASM exports. Verify import graphs and final artifacts, not just minified string searches. Apply a restrictive CSP and hosted Permissions-Policy disabling camera/microphone. This does not constrain other software on the device.
-
-Test with networking disabled and camera permission denied. Log browser requests and inspect every bundled asset. No telemetry, remote fonts, remote error reporting, or CDN fallback.
-
-## Offline and accessibility
-
-Test actual receiver camera access on iOS Safari and Android Chrome using the chosen offline/secure-context strategy. Bundle workers and WASM locally. Provide keyboard controls, readable contrast, pause, and screen-reader status at meaningful intervals. Animated optical transfer remains visually dependent.
-
-Encryption needs a reviewed envelope/key-derivation design. Dual lanes, colour multiplexing, backchannels, paper export, and bidirectional transfer are deferred.
+Offline sender operation is supported by a single HTML artifact. Receiver also has a single artifact but camera permissions depend on the browser's secure-context rules. HTTPS is the recommended camera deployment. UI includes keyboard-native controls, status announcements, responsive layouts, reduced-motion speed adjustment, and explicit playback pause. Optical transfer remains visually dependent.

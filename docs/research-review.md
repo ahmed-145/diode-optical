@@ -30,4 +30,4 @@ The PRD's AirDrop rollout, historical star trajectory, funding amount, and walle
 
 ## Decision
 
-Keep the original PRD as historical input. Finish device-context licensing review, protocol design, dependency evaluation, and the PRD's freedom-to-operate decision before implementation. Do not call the future tool hardened or production-ready based on source scanning alone.
+Original recommendation: resolve the PRD's pre-build review before implementation. The owner subsequently explicitly directed implementation of an experimental prototype. That work now exists; the original PRD is preserved, and legal clearance remains unresolved. The independent fountain codec is not a claim of patent avoidance. Do not call the prototype hardened or production-ready based on source scanning alone.
