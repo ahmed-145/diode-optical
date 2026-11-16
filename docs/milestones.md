@@ -9,7 +9,7 @@
 | Sender and camera/image receiver UI | Implemented; simulated DOM/canvas integration passes |
 | Gzip and passphrase encryption | Implemented; round-trip/wrong-passphrase/tamper tests pass |
 | Standalone HTML and reproducible build | Implemented; deterministic hashes checked locally |
-| Full Chromium UI test | Included in GitHub CI; sandbox cannot run a local server/browser |
+| Full Chromium UI test | Passed in GitHub CI on Ubuntu 24.04 / Chromium; local sandbox cannot run a server/browser |
 | Actual two-device camera transfer | Not performed |
 | iOS/Android/low-end device and lighting matrix | Not performed |
 | Independent security/cryptographic review | Not performed |
