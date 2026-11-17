@@ -17,6 +17,10 @@ Open `http://127.0.0.1:4173/sender.html` to send, or `/receiver.html` to receive
 
 `npm run build` produces standalone `dist/sender.html` and `dist/receiver.html`. Each includes its own scripts and styles and has no runtime asset downloads. Sender can be opened directly as a file. Keep both HTML files together if you want the Send/Receive navigation links to work. CI publishes the distribution and test evidence as an Actions artifact.
 
+## HTTPS hosting for an iPhone
+
+Import this repository into Vercel; the checked-in vercel.json selects the static build. Use `/send` on the computer and `/receive` on the iPhone. See [deployment instructions](docs/deployment.md). This removes the temporary tunnel requirement; it does not accelerate QR transfer.
+
 ## Transfer
 
 1. Choose a file (up to 5 MB), or try the sample.
