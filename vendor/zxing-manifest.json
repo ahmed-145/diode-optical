@@ -1,0 +1,12 @@
+{
+  "package": "zxing-wasm",
+  "version": "3.1.7",
+  "integrity": "sha512-LI94ndlOY+xoqlkNcc0EwByrMpUXKrCX171EQ38kGWqpiRq/gcnC+ZrbRipvxI3uV4LaDtNlKo1p9Uayg1sesQ==",
+  "wasmSha256": "33c8c50be17d0bb05454b4fd3ffb5b5ab9a8e8d1c0ebeb21a1adf4a89c1a8b59",
+  "source": "https://github.com/Sec-ant/zxing-wasm",
+  "wasmSource": "https://github.com/zxing-cpp/zxing-cpp",
+  "licenses": [
+    "MIT (wrapper)",
+    "Apache-2.0 (ZXing-C++)"
+  ]
+}
