@@ -2,7 +2,7 @@ import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 const inventory = JSON.parse(await readFile('dist/build-inventory.json', 'utf8'));
-assert.deepEqual(inventory.sender, ['src/common.js','src/encode.js','src/sender.js','vendor/qrcode.cjs']);
+assert.deepEqual(inventory.sender, ['src/common.js','src/encode.js','src/qr.js','src/sender.js','vendor/qrcode.cjs','vendor/fast-qr.mjs','vendor/fast-qr.wasm']);
 const sender = await readFile('dist/sender.html','utf8');
 for (const forbidden of ['parseFrame','unpack(','unb64','sourceCount','getUserMedia','mediaDevices','jsQR','FountainDecoder','openObject','DecompressionStream','fetch(','XMLHttpRequest','WebSocket(','serviceWorker']) assert(!sender.includes(forbidden), `Sender contains ${forbidden}`);
 for (const mode of ['sender','receiver']) {

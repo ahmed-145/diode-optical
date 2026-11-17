@@ -1,0 +1,13 @@
+{
+  "source": "https://github.com/infrost/RaptorQR",
+  "path": "packages/raptorqr-fast-qr-wasm/src/wasm",
+  "wasmGitBlobSha": "89eb9b147a4a8aa9f9c551ce884ca2488346aff6",
+  "jsGitBlobSha": "425fc57f571c73ac113591a2f71e2ff6587eb455",
+  "wasmSha256": "707101da64f25b302b72869bf7a86b747208480ea5c6f10941b74e87da134b0e",
+  "jsSha256": "3d4053254a53dede29c57c73ecd77c45db84c1ecfab51178421349912d178992",
+  "upstreamRenderer": "https://github.com/erwanvivien/fast_qr",
+  "licenses": [
+    "MIT (Haixiang wrapper)",
+    "MIT (Erwan Vivien fast_qr)"
+  ]
+}

@@ -1,7 +1,7 @@
 export const BLOCK = 256;
 export const WIDTH = 32;
-export const PROFILES = Object.freeze({robust: {block: 256, fps: 4}, balanced: {block: 512, fps: 8}, dense: {block: 1024, fps: 12}});
-export function validBlock(block) { return [256, 512, 1024].includes(block); }
+export const PROFILES = Object.freeze({robust: {block: 256, fps: 4}, balanced: {block: 512, fps: 8}, dense: {block: 1024, fps: 12}, iphone: {block: 1024, fps: 20, binary: true}, turbo: {block: 2048, fps: 30, binary: true}, dual: {block:1024, fps:60, binary:true, lanes:2}});
+export function validBlock(block) { return [256, 512, 1024, 2048].includes(block); }
 export const MAX_FILE = 5 * 1024 * 1024;
 export const MAX_OBJECT = MAX_FILE + 128 * 1024;
 export const te = new TextEncoder();

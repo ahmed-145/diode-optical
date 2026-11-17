@@ -1,6 +1,6 @@
 # Security model
 
-Experimental v0.2; not independently audited or certified. Do not treat this as a physical data diode.
+Experimental v0.3; not independently audited or certified. Do not treat this as a physical data diode.
 
 The sender build contains no camera or receiver code. It cannot constrain the OS, extensions, other apps, peripherals, radios, microphones, or a compromised browser. CSP denies network connections, and hosted sender headers disable camera/microphone; those controls still depend on the browser and deployment.
 
@@ -11,3 +11,5 @@ The receiver limits file/object size, metadata, generation width, active session
 No payload or camera data is intentionally persisted. Camera tracks are stopped on exit, hiding the page, reset, explicit stop and transfer completion. Files and passphrases may remain in process memory until the page closes; secure erasure in a browser is not guaranteed.
 
 No supported production release, response-time commitment, or private reporting channel is configured. Do not post sensitive files or exploit details in public issues. Real camera compatibility, physical isolation, regulatory compliance, and patent freedom-to-operate remain unverified.
+
+The receiver now parses camera images with pinned ZXing-C++ WASM, normally in a worker. This is a larger compiled dependency than jsQR and has not received an independent project-specific audit. Its JS/WASM pair and renderer artifacts are checked before building. Worker creation and WASM compilation are explicitly allowed by receiver CSP, while network connections remain denied. No blanket unsafe-eval permission was added. The sender contains only encoder WASM and forbids workers.

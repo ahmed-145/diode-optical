@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — 2026-11-17
+
+- Add raw-byte iPhone/Turbo profiles and staggered Dual lab mode, retaining legacy receivers via compatible profiles.
+- Reuse and credit MIT fast_qr/RaptorQR rendering and pinned MIT/Apache ZXing WASM scanning; embed assets without runtime CDN loading.
+- Move scanning into a worker with serial backpressure and a main-thread WASM fallback.
+- Add fixed center/wide guides, capture resolution controls and useful-data/latency diagnostics.
+- Hold symbols for whole display refreshes; let fullscreen codes fill the available screen.
+- Add matched-engine CPU benchmarks, raw-byte/corruption/loss/dual-code/memory tests and continuous browser-to-synthetic-camera verification.
+- Record the owner's live Vercel sender/receiver links.
+
 ## 0.2.0 — 2026-11-17
 
 - Add Robust/Balanced/Dense payload profiles with legacy frame compatibility, transfer-time lower bounds and measured playback rate.

@@ -1,5 +1,5 @@
 import {BLOCK, WIDTH, MAX_FILE, MAX_OBJECT, assert, byteStream, b64, crc32, digest, hex, keyFor, maskFor, pack, safeName, validBlock, xor} from './common.js';
-export async function prepare(bytes, name, {passphrase = '', compress = true, block = BLOCK} = {}) {
+export async function prepare(bytes, name, {passphrase = '', compress = true, block = BLOCK, binary = false} = {}) {
   assert(bytes instanceof Uint8Array && bytes.length <= MAX_FILE, 'Choose a file of 5 MB or smaller');
   assert(crypto.subtle, 'Web Crypto requires HTTPS or localhost');
   let payload = bytes, compression = 'none';
@@ -15,11 +15,11 @@ export async function prepare(bytes, name, {passphrase = '', compress = true, bl
     object = pack({v: 1, encrypted: true, salt: b64(salt), iv: b64(iv), kdf: 'PBKDF2-SHA256', iterations: 250000}, encrypted);
   }
   assert(object.length <= MAX_OBJECT, 'Encoded object too large');
-  return new FountainEncoder(object, await digest(object), block);
+  return new FountainEncoder(object, await digest(object), block, binary);
 }
 export class FountainEncoder {
-  constructor(object, hash, block = BLOCK) {
-    assert(validBlock(block), 'Unsupported symbol size'); this.block = block;
+  constructor(object, hash, block = BLOCK, binary = false) {
+    assert(validBlock(block) && (block <= 1024 || binary), 'Unsupported symbol size'); this.block = block; this.binary = binary;
     this.object = object; this.id = hash.slice(0, 16); this.crc = crc32(object);
     this.generations = Math.ceil(object.length / (block * WIDTH));
     this.blocks = Math.ceil(object.length / block); this.index = 0;
@@ -39,8 +39,12 @@ export class FountainEncoder {
     }
     const bytes = new Uint8Array(this.block + 38), view = new DataView(bytes.buffer);
     bytes.set(this.id); view.setUint32(16, this.object.length); view.setUint16(20, generation); view.setUint32(22, seed);
-    if (this.block !== BLOCK) view.setUint32(26, this.block);
+    if (this.binary || this.block !== BLOCK) view.setUint32(26, this.block);
     bytes.set(payload, 30); view.setUint32(30 + this.block, this.crc); view.setUint32(34 + this.block, crc32(bytes.subarray(0, 34 + this.block)));
+    if (this.binary) {
+      const raw = new Uint8Array(bytes.length + 4); raw.set([68,73,79,51]); raw.set(bytes,4);
+      return raw;
+    }
     return (this.block === BLOCK ? 'DIO1:' : 'DIO2:') + b64(bytes);
   }
 }

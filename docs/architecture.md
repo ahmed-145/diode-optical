@@ -1,21 +1,25 @@
-# Implemented architecture — experimental v0.2
+# Implemented architecture — experimental v0.3
 
-The implementation uses browser-native JavaScript modules as source and a small dependency-free Node build script. The earlier TypeScript/WASM/RaptorQ proposal was replaced with inspectable JavaScript and an independent bounded binary fountain codec. This is not RFC 6330 compatibility or patent clearance.
+Browser-native JavaScript sources, pinned WebAssembly engines, and a dependency-free Node build script produce two standalone HTML artifacts. Runtime components are embedded locally; no database, upload endpoint, CDN dependency, account or telemetry is part of the application.
 
 | Component | Implementation |
 | --- | --- |
-| Shared framing and envelope | src/common.js: limits, table-based CRC-32, SHA-256, encoding metadata, coefficient masks, encryption KDF |
-| Receiver framing | src/read.js: frame parsing, base64 decoding, object parsing; excluded from sender |
-| Sender only | src/encode.js + src/sender.js + MIT QR generator |
-| Receiver only | src/decode.js + src/receiver.js + Apache-2.0 jsQR |
-| Build | scripts/build.mjs: separate standalone HTML, script-hash CSP, source inventory, hashes |
-| Audit | scripts/audit.mjs: sender allowlist, prohibited APIs, offline references, compiled script syntax |
-| Verification | tests/: protocol, real QR raster/scanner, simulated UI, optional Chromium workflow |
+| Shared encoding/integrity | src/common.js: limits, CRC-32, SHA-256, object packing, coefficient masks, encryption KDF |
+| Receive-only framing | src/read.js: binary/text packet parsing and object unpacking; excluded from sender |
+| Fountain sender | src/encode.js: bounded generation-based binary equations; text and raw transports |
+| QR renderer | src/qr.js + MIT fast_qr/RaptorQR WASM; JavaScript compatibility renderer |
+| Receiver recovery | src/decode.js: bounded equation recovery, decompression, GCM opening, SHA-256 save gate |
+| Capture | src/capture.js + receiver.js: fixed user-selected guide, bounded pixels, frame callbacks, lifecycle tokens |
+| Scanner | src/scanner.js + src/scan-worker.js: pinned ZXing WASM in a Blob worker, main-thread fallback, serial backpressure |
+| Build/audit | scripts/build.mjs and audit.mjs: separate source inventories, matching engine hashes, script-hash CSP, sender API exclusions, artifact hashes |
+| Validation | tests/: legacy/new protocol, real renderer/scanner pairs, UI harness, browser matrix and synthetic video transfers |
 
-The sender never imports receiver framing, object parsing, recovery, scanner, decompression, or camera code. Encryption keys are derived for encryption only in this build. Both builds inline their assets, and CSP denies network connections. Hosted sender headers additionally disable camera and microphone. This boundary belongs to the app, not the host OS. No database, backend, account, telemetry, local storage, or automatic received-file execution is present.
+The sender has no frame parser, camera, scanner, recovery decoder or receiver UI, and its CSP forbids workers and network connections. Only the QR encoder engine is compiled into it. The receiver permits its locally-created Blob worker and WASM compilation; it retains no-connect CSP. Generated WASM network loader glue is omitted on the sender; ZXing receives embedded wasmBinary on the receiver. The broad JavaScript unsafe-eval permission is not enabled.
 
-Metadata travels inside the recoverable object. The receiver maintains a single session with a maximum object size of 5 MiB + 128 KiB and 32 equations per generation. It releases solved-group buffers after reconstruction. Decompression and original file lengths are bounded; a SHA-256 match gates saving. AES-GCM is optional. See the exact [wire protocol](protocol.md).
+DIO3 raw packets remove base64 expansion; DIO1/DIO2 remain readable. Object envelopes, metadata protection, gzip, passphrase encryption, maximum file/object sizes and whole-file SHA-256 checks remain in force. At most one decode runs at a time; camera frames are acquired only after the previous result is consumed. Session and camera cancellation are separate; stale work cannot complete a reset transfer. Worker initialization has a bounded wait and falls back to main-thread WASM if unavailable.
 
-Camera access is explicit, tracks are stopped on stop, completion, reset, hidden tab, or page exit, and camera and transfer operations use separate cancellation epochs; recovery refuses stale completion even when reset restarts the same file. Scanning uses requestVideoFrameCallback when available and a serial timer fallback otherwise. Device-enumeration failure does not discard a working camera. Download URLs are revoked on replacement/reset. Mobile camera behavior and runtime browser enforcement require separate physical/browser verification.
+Sender playback uses whole display refresh callbacks and does not catch up with short flashes after a missed callback. Dual lab mode alternates writes to two canvas lanes; neither acknowledgment nor reverse channel is required. A matching receiver wide guide can extract two QR packets per captured frame.
 
-Offline sender operation is supported by a single HTML artifact. Receiver also has a single artifact but camera permissions depend on the browser's secure-context rules. HTTPS is the recommended camera deployment. UI includes keyboard-native controls, status announcements, responsive layouts, reduced-motion speed adjustment, and explicit playback pause. Optical transfer remains visually dependent.
+Camera constraints are preferences, not hardware guarantees. Actual source/capture dimensions, processed scan rate, useful coded-data rate and scan latency are visible. Sharp requests higher resolution; continuous focus is requested only when advertised by the track. This is fixed crop geometry, not motion-adaptive marker tracking.
+
+See [wire protocol](protocol.md), [iPhone research](iphone-performance.md), [dependency provenance](../vendor/README.md) and [verification](verification.md). Physical phone-camera validation and independent security/legal review remain open.

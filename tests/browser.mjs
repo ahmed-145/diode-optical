@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {testCamera} from './camera.mjs';
+import {testCamera,testLiveOpticalStream} from './camera.mjs';
 import {spawn} from 'node:child_process';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 const engine = process.env.BROWSER_ENGINE || 'chromium';
@@ -11,6 +11,7 @@ let browser;
 async function waitPrepared(page) {
   await page.waitForFunction(() => document.getElementById('status').dataset.error === 'true' || (!document.getElementById('qr').hidden && !document.getElementById('prepare').disabled));
   assert.equal(await page.locator('#status').getAttribute('data-error'), 'false', await page.locator('#status').textContent());
+  assert.match(await page.locator('#render-backend').textContent(),/^WASM renderer/);
 }
 try {
   browser = await engines[engine].launch({headless:true});
@@ -43,11 +44,12 @@ try {
   assert.equal(await receiver.locator('#result').isHidden(),true);
   await receiver.locator('#passphrase').fill('browser test passphrase');await receiver.locator('#unlock').click();
   await receiver.locator('#result').waitFor();
+  assert.match(await receiver.locator('#scan-health').textContent(),/ZXing WASM worker/);
   assert.match(await receiver.locator('#received-name').textContent(),/browser-check.txt/);
   const downloadPromise=receiver.waitForEvent('download');await receiver.locator('#save').click();
   const download=await downloadPromise;assert.deepEqual(await readFile(await download.path()),payload);
   await receiver.locator('#reset').click();assert.equal(await receiver.locator('#recovered').textContent(),'0%');assert.equal(await receiver.locator('#result').isHidden(),true);
-  for (const profile of ['robust','dense']) {
+  for (const profile of ['robust','balanced','dense','iphone','turbo','dual']) {
     const bytes=Buffer.from('Profile check: '+profile);
     await sender.locator('#profile').selectOption(profile);
     await sender.locator('#file').setInputFiles({name:'profile.bin',mimeType:'application/octet-stream',buffer:bytes});
@@ -85,9 +87,16 @@ try {
   }
   await receiver.screenshot({path:'test-results/receiver.png',fullPage:true});
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
+  if(engine==='chromium'){
+    const fallback=await browser.newContext({acceptDownloads:true});await fallback.addInitScript(()=>{window.Worker=undefined;});
+    const page=await fallback.newPage();await page.goto('http://127.0.0.1:4173/receiver.html');
+    await page.locator('#image').setInputFiles({name:'fallback.png',mimeType:'image/png',buffer:await sender.locator('#qr').screenshot()});
+    await page.locator('#result').waitFor();assert.match(await page.locator('#scan-health').textContent(),/ZXing WASM/);assert(!/worker/.test(await page.locator('#scan-health').textContent()));
+    await fallback.close();
+  }
   await context.close();
-  if (engine === 'chromium') await testCamera(browser);
-  await writeFile('test-results/browser-result.json',JSON.stringify({passed:true,engine,browser:browser.version(),syntheticCamera:engine==='chromium'?'passed':'not run',checks:['all three profiles through real QR screenshots','AES-GCM wrong/right passphrase','verified file download byte comparison','reset','camera denial','offline playback','mobile/desktop overflow','no page errors or external requests']},null,2));
+  if (engine === 'chromium') { await testCamera(browser); await testLiveOpticalStream(browser,'iphone'); await testLiveOpticalStream(browser,'dual'); }
+  await writeFile('test-results/browser-result.json',JSON.stringify({passed:true,engine,browser:browser.version(),syntheticCamera:engine==='chromium'?'passed':'not run',checks:['all six profiles through real QR screenshots','AES-GCM wrong/right passphrase','verified file download byte comparison','reset','camera denial','offline playback','mobile/desktop overflow','no page errors or external requests']},null,2));
   console.log('Browser checks passed: optical UI round trip, encryption, download, reset, camera denial, offline operation, responsive layout.');
 } catch (error) {
   if (browser) {

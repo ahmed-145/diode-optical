@@ -1,6 +1,6 @@
-# Diode wire protocol — v1 and v2
+# Diode wire protocol — v1, v2 and v3
 
-Status: experimental v0.2, implementation-specific; no RFC 6330 interoperability. All integers are unsigned big-endian. Legacy Robust QR frames contain ASCII `DIO1:` followed by standard base64 for 294 bytes (397 characters overall). Balanced and Dense use `DIO2:` with the same header layout and a variable symbol size. Receivers accept both versions; old v0.1 receivers need Robust mode. No payload depends on a one-time descriptor beacon.
+Status: experimental v0.3, implementation-specific; no RFC 6330 interoperability. All integers are unsigned big-endian. Legacy Robust QR frames contain ASCII `DIO1:` followed by standard base64 for 294 bytes (397 characters overall). Balanced and Dense use `DIO2:` with the same header layout and a variable symbol size. Receivers accept both versions; old v0.1 receivers need Robust mode. No payload depends on a one-time descriptor beacon.
 
 | Offset | Length | Field |
 | --- | --- | --- |
@@ -36,3 +36,11 @@ Plain metadata: `name` (sanitized on receipt), original `size`, original lowerca
 Encrypted metadata: `encrypted: true`, `kdf: PBKDF2-SHA256`, `iterations: 250000`, base64 `salt` (16 random bytes), base64 `iv` (12 random bytes). AES-256-GCM encrypts the complete plain envelope with additional authenticated data equal to UTF-8 `DIO1` and Web Crypto's default 128-bit tag. Nested encryption is rejected. The KDF configuration is fixed, not accepted as arbitrary work from untrusted metadata. Passphrases are 8–1024 JavaScript string characters and encoded as UTF-8 without normalization.
 
 The object identity and object CRC cover the final encrypted envelope when encryption is enabled. SHA-256 without an independently trusted digest does not establish sender identity. Passphrase security still depends on entropy and secure sharing. This protocol has not had an independent cryptographic review.
+
+## Version 3 raw-byte QR frames
+
+New iPhone/Turbo/Dual profiles encode QR byte data directly: four ASCII magic bytes `DIO3`, followed by the same core header/payload/CRC layout as v2. The symbol size at core offset 26 is explicit; accepted sizes are 256, 512, 1024 and 2048. The complete raw packet must contain B+42 bytes, at most 2090. Offsets relative to the raw packet: session ID 4, object length 20, generation 24, seed 26, symbol size 30, payload 34, object CRC 34+B, frame CRC 38+B. CRC covers core bytes only: raw packet bytes 4 through 37+B. The fixed magic is independently validated.
+
+Byte payload is taken from the scanner's original `bytes`, never its decoded text representation. Legacy ASCII QR bytes are decoded only after their bounded DIO1/DIO2 prefix is recognized. Session consistency still includes symbol size. The metadata/encryption envelope and AES-GCM additional authenticated data `DIO1` are unchanged.
+
+Parallel lanes carry independent ordinary packets from the same encoder. A lane is not a separate session, and neither packet order nor lane identity is needed for decoding. The display sends the next encoding equation whenever a lane is updated; the other lane remains unchanged. No ACK, negotiation, device identifier, network handshake or receive path is added to the sender.

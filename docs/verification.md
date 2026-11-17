@@ -1,4 +1,13 @@
-# Verification — v0.2 upgrade (2026-11-17)
+# Verification — v0.3 optical pipeline upgrade (2026-11-17)
+
+Local `npm run check` passes 23 tests. New tests use the actual pinned fast_qr and ZXing WASM engines, byte-exact raw packets and original-file recovery, legacy profiles, raw JavaScript fallback, bounded/corrupt packet rejection, portrait/landscape guide bounds, stable renderer memory, two independent QR codes in one image, and high-entropy late-join recovery with losses and duplicates. Sender dependency hashes and API separation are audited.
+
+The matched-pixel CPU benchmark records all six profiles, baseline decode success counts, median rendering/scanning time and scanner P95 in test-results/benchmark.json. It is not a phone-camera throughput benchmark. See [research and measurement scope](iphone-performance.md).
+
+The browser suite is being rerun on Chromium, Firefox and WebKit for this upgrade. It requires the actual WASM renderer and worker scanner, exercises all six profiles, and adds continuous single/dual production sender-to-synthetic-video transfers with late join and byte-identical verified downloads. Passing results must be confirmed before marking the new browser coverage green.
+
+## Historical v0.2 evidence
+
 
 Local `npm run check` passes 15 tests. Added coverage includes periodic loss at several rates across all symbol sizes, all-profile real QR scans at three pixels/module, bounded/mixed profile headers, CRC known answers, and reset during a pending reconstruction of the same file. The maximum-file test now exercises all three symbol sizes. Sender build checks now also exclude receive-side framing/base64/object parsing helpers.
 
