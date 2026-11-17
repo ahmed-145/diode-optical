@@ -55,7 +55,7 @@ Brotli, dual lanes, paper export, and bidirectional transfer are not implemented
 Browser checks, including all-profile screenshot-to-download tests, run on Chromium, Firefox and WebKit in CI. Chromium additionally tests the actual video scanning loop with a synthetic camera, completion cleanup, missing device labels, cancellation during permission requests, disconnection, and restart. These are not physical phone-camera tests. To run locally:
 
 ```sh
-npm install --no-save --package-lock=false playwright@1.58.0
+npm install --no-save --package-lock=false playwright@1.65.1
 npx playwright install chromium
 npm run test:browser
 # Optional: BROWSER_ENGINE=firefox npm run test:browser

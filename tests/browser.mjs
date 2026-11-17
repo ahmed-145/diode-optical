@@ -93,7 +93,7 @@ try {
   if (browser) {
     await mkdir('test-results',{recursive:true});
     for (const [i,page] of browser.contexts().flatMap(c=>c.pages()).entries()) {
-      console.error('Browser failure state',i,await page.locator('#status').textContent().catch(()=>''),await page.locator('#mode').textContent().catch(()=>''));
+      console.error('Browser failure state',i,await page.evaluate(()=>({status:document.getElementById('status')?.textContent,mode:document.getElementById('mode')?.textContent})).catch(()=>({})));
       await page.screenshot({path:`test-results/failure-${i}.png`,fullPage:true}).catch(()=>{});
     }
   }

@@ -27,7 +27,11 @@ jobs:
           npm run build
           cmp dist/SHA256SUMS /tmp/first-build-sums
       - name: Install browser test harness
-        run: npm install --no-save --package-lock=false playwright@1.58.0
+        run: npm install --no-save --package-lock=false playwright@1.65.1
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-1.65.1-${{ matrix.browser }}
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run test:browser
         env:
