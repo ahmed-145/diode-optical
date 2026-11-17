@@ -9,7 +9,7 @@
 | Sender and camera/image receiver UI | Implemented; simulated DOM/canvas integration passes |
 | Gzip and passphrase encryption | Implemented; round-trip/wrong-passphrase/tamper tests pass |
 | Standalone HTML and reproducible build | Implemented; deterministic hashes checked locally |
-| Browser matrix + synthetic camera lifecycle | Chromium, Firefox and WebKit checks configured; verify v0.2 Actions result. Prior Chromium v0.1 passed. |
+| Browser matrix + synthetic camera lifecycle | Passed on Chromium, Firefox and WebKit in workflow 43984231696; Chromium synthetic video/lifecycle tests also passed. |
 | Actual two-device camera transfer | Not performed |
 | iOS/Android/low-end device and lighting matrix | Not performed |
 | Independent security/cryptographic review | Not performed |
