@@ -1,0 +1,28 @@
+name: Vendor pinned optical scanner
+on:
+  push:
+    branches: [main]
+    paths: [scripts/vendor-zxing.mjs, .github/workflows/vendor-optical.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  vendor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/vendor-zxing.mjs
+      - name: Commit pinned assets
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add vendor/zxing-reader.js vendor/zxing-reader.wasm vendor/zxing.LICENSE vendor/zxing-manifest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "vendor: pin ZXing WASM scanner with package integrity metadata"
+          git push origin HEAD:main

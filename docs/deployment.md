@@ -1,5 +1,15 @@
 # Deploy the static interface to Vercel
 
+## Live deployment
+
+- App: https://diode-optical.vercel.app/
+- Sender: https://diode-optical.vercel.app/send
+- Receiver (open in iPhone Safari): https://diode-optical.vercel.app/receive
+
+Deployed by the owner on 2026-11-17. Keep these URLs as the canonical hosted entry points. Hosting supplies the interface; file bytes still travel optically between devices.
+
+## Redeploy
+
 The repository includes vercel.json with a static build and camera permissions separated by page. No backend, database, file storage, API key, or environment variable is required.
 
 1. In Vercel, create a project and import `ahmed-145/diode-optical` from GitHub.

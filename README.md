@@ -2,6 +2,10 @@
 
 Transfer a file through animated QR codes. No Wi-Fi, Bluetooth, server, account, or runtime CDN.
 
+**Live app:** [Send from your computer](https://diode-optical.vercel.app/send) · [Receive on your iPhone](https://diode-optical.vercel.app/receive)
+
+Open the receiver link in Safari, tap **Start camera**, allow access, and scan the sender’s stream. No local server or tunnel is needed for the hosted app.
+
 **Experimental v0.2:** sender and receiver are implemented and automated checks run locally. Three browser engines and synthetic camera lifecycle tests are configured in CI. Real phone-camera/lighting validation and independent security review remain outstanding. This is not a certified hardware data diode.
 
 ## Run
