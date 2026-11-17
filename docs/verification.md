@@ -4,7 +4,7 @@ Local `npm run check` passes 23 tests. New tests use the actual pinned fast_qr a
 
 The matched-pixel CPU benchmark records all six profiles, baseline decode success counts, median rendering/scanning time and scanner P95 in test-results/benchmark.json. It is not a phone-camera throughput benchmark. See [research and measurement scope](iphone-performance.md).
 
-The browser suite is being rerun on Chromium, Firefox and WebKit for this upgrade. It requires the actual WASM renderer and worker scanner, exercises all six profiles, and adds continuous single/dual production sender-to-synthetic-video transfers with late join and byte-identical verified downloads. Passing results must be confirmed before marking the new browser coverage green.
+**Passed:** [v0.3 workflow 43997223243](https://github.com/ahmed-145/diode-optical/actions/runs/43997223243), application commit `b939b8d197f9984e19c6f2c8508bf09045b7f972`. Chromium, Firefox and WebKit jobs all succeeded. The suite requires the actual WASM renderer and worker scanner and exercises all six profiles. Chromium additionally passed continuous single/dual production sender-to-synthetic-video transfers with late join and byte-identical verified downloads: 12,288 bytes recovered in 2,330 ms and 1,309 ms respectively. Those synthetic video timings include the test driver and do not measure a physical iPhone camera.
 
 ## Historical v0.2 evidence
 
